@@ -52,6 +52,12 @@ futures = "0.3"
 uuid = "1"
 tokio = { version = "1", features = ["rt", "time"] }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+btleplug = "0.13"
+futures = "0.3"
+uuid = "1"
+tokio = { version = "1", features = ["rt", "time"] }
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(phr_check)'] }
 

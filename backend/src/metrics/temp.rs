@@ -2,12 +2,17 @@
 //!
 //! Windows: LibreHardwareMonitor WMI -> ThermalZoneInformation perf counter -> MSAcpi (admin).
 //! Linux: sysinfo components (hwmon); fan RPM from hwmon `fan*_input`.
+//! macOS: native IOHID temperature events (chip-die proxy; private Apple API).
 
 #[cfg(windows)]
 #[path = "temp_win.rs"]
 mod imp;
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+#[path = "temp_mac.rs"]
+mod imp;
+
+#[cfg(not(any(windows, target_os = "macos")))]
 mod imp {
     use super::SensorReadings;
 
@@ -103,6 +108,7 @@ mod imp {
     }
 }
 
+#[allow(unused_imports)]
 pub use super::pick;
 
 #[derive(Debug, Clone, Default)]

@@ -92,7 +92,7 @@ impl Snapshot {
             t.on_battery = b.on_battery;
             t.charging = b.charging;
         }
-        if let Some(rpm) = self.fan_rpm.filter(|r| *r > 0) {
+        if let Some(rpm) = self.fan_rpm {
             t.fan_valid = true;
             t.fan_rpm = rpm.min(u32::from(u16::MAX)) as u16;
         }
@@ -319,10 +319,23 @@ impl Collector {
 
         // GPU.
         s.gpu = self.gpu.read();
+        // On Apple Silicon, the GPU collector owns the already-open SMC
+        // connection. Reuse it for fan RPM without a second service probe.
+        #[cfg(target_os = "macos")]
+        if let Some(rpm) = self.gpu.fan_rpm() {
+            s.fan_rpm = Some(rpm);
+            s.sources.insert("fan_rpm".into(), "AppleSMC F*Ac".into());
+        }
         s.sources.insert(
             "gpu".into(),
             match (&s.gpu, self.gpu.last_error()) {
-                (Some(_), _) => "NVML".to_string(),
+                (Some(_), _) => {
+                    if cfg!(target_os = "macos") {
+                        "IOReport / AppleSMC".to_string()
+                    } else {
+                        "NVML".to_string()
+                    }
+                }
                 (None, Some(e)) => format!("not present ({e})"),
                 (None, None) => "not present".to_string(),
             },
@@ -332,7 +345,15 @@ impl Collector {
         s.battery = power::read();
         s.sources.insert(
             "battery".into(),
-            if s.battery.is_some() { "GetSystemPowerStatus / sysfs".into() } else { "no battery".into() },
+            if s.battery.is_some() {
+                if cfg!(target_os = "macos") {
+                    "IOKit AppleSmartBattery".into()
+                } else {
+                    "GetSystemPowerStatus / sysfs".into()
+                }
+            } else {
+                "no battery".into()
+            },
         );
 
         if self.first {
