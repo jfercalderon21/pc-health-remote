@@ -20,6 +20,8 @@
 #define PHR_FLAG_GPU_TEMP_VALID (1u << 4)
 #define PHR_FLAG_BATTERY_PRESENT (1u << 5)
 #define PHR_FLAG_FAN_VALID (1u << 6)
+// vram_total_dgb contains available RAM rather than dedicated VRAM.
+#define PHR_FLAG_RAM_AVAILABLE (1u << 7)
 
 typedef struct {
     uint8_t seq;
@@ -55,3 +57,4 @@ size_t phr_stream_feed(
     size_t len,
     void (*cb)(const PhrTelemetry*, void*),
     void* ctx);
+

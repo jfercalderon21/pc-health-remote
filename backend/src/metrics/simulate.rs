@@ -31,6 +31,8 @@ pub fn snapshot(t: f64) -> Snapshot {
         cpu_clock_mhz: Some(tri(t, 20.0, 800.0, 4500.0) as u32),
         ram_total_bytes: ram_total,
         ram_used_bytes: (tri(t, 90.0, 0.40, 0.98) * ram_total as f64) as u64,
+        // The simulator retains independent VRAM semantics, not macOS shared memory.
+        ram_available_bytes: None,
         disk_mount: "C:\\".into(),
         disk_used_pct: 71.0,
         uptime_s: 3600 * 50 + t as u64,

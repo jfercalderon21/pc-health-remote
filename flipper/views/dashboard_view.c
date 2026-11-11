@@ -1,3 +1,4 @@
+
 #include "dashboard_view.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -166,11 +167,12 @@ static void draw_page_details(Canvas* c, const DashModel* m) {
         snprintf(s, sizeof(s), "--");
     row(c, lx, lr, 19, "RAM", s);
 
-    if(have && (t->flags & PHR_FLAG_GPU_PRESENT) && t->vram_total_dgb)
+    bool ram_available = have && (t->flags & PHR_FLAG_RAM_AVAILABLE);
+    if(have && (ram_available || (t->flags & PHR_FLAG_GPU_PRESENT)) && t->vram_total_dgb)
         snprintf(s, sizeof(s), "%u.%uGB", t->vram_total_dgb / 10, t->vram_total_dgb % 10);
     else
         snprintf(s, sizeof(s), "--");
-    row(c, lx, lr, 27, "VRAM", s);
+    row(c, lx, lr, 27, ram_available ? "Libre" : "VRAM", s);
 
     if(have && t->cpu_clock_mhz)
         snprintf(

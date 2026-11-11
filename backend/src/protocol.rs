@@ -22,6 +22,8 @@ pub const FLAG_GPU_PRESENT: u8 = 1 << 3;
 pub const FLAG_GPU_TEMP_VALID: u8 = 1 << 4;
 pub const FLAG_BATTERY_PRESENT: u8 = 1 << 5;
 pub const FLAG_FAN_VALID: u8 = 1 << 6;
+/// On this frame, `vram_total_dgb` is available system RAM rather than VRAM.
+pub const FLAG_RAM_AVAILABLE: u8 = 1 << 7;
 
 /// CRC16-CCITT-FALSE: poly 0x1021, init 0xFFFF, no reflection, xorout 0.
 pub fn crc16(data: &[u8]) -> u16 {
@@ -45,6 +47,7 @@ pub struct Telemetry {
     pub gpu_temp_valid: bool,
     pub battery_present: bool,
     pub fan_valid: bool,
+    pub ram_available: bool,
     pub cpu_load: u8,
     pub cpu_temp: u8,
     pub gpu_load: u8,
@@ -112,6 +115,7 @@ impl Telemetry {
             (self.gpu_temp_valid, FLAG_GPU_TEMP_VALID),
             (self.battery_present, FLAG_BATTERY_PRESENT),
             (self.fan_valid, FLAG_FAN_VALID),
+            (self.ram_available, FLAG_RAM_AVAILABLE),
         ];
         for (set, bit) in bits {
             if set {
@@ -163,6 +167,7 @@ impl Telemetry {
             gpu_temp_valid: f & FLAG_GPU_TEMP_VALID != 0,
             battery_present: f & FLAG_BATTERY_PRESENT != 0,
             fan_valid: f & FLAG_FAN_VALID != 0,
+            ram_available: f & FLAG_RAM_AVAILABLE != 0,
             cpu_load: b[6],
             cpu_temp: b[7],
             gpu_load: b[8],
@@ -324,6 +329,7 @@ mod tests {
             gpu_temp_valid: true,
             battery_present: true,
             fan_valid: true,
+            ram_available: false,
             cpu_load: 42,
             cpu_temp: 71,
             gpu_load: 88,
@@ -391,6 +397,18 @@ mod tests {
         t.battery_present = true;
         t.fan_valid = true;
         assert_eq!(t.flags(), 0x7F);
+    }
+
+    #[test]
+    fn ram_available_reuses_vram_total_without_changing_frame_length() {
+        let mut t = sample();
+        t.ram_available = true;
+        t.vram_total_dgb = 35;
+        let f = t.encode(1);
+        assert_eq!(f.len(), TELEMETRY_LEN);
+        assert_eq!(f[5] & FLAG_RAM_AVAILABLE, FLAG_RAM_AVAILABLE);
+        assert_eq!(u16::from_le_bytes([f[16], f[17]]), 35);
+        assert_eq!(parse_frame(&f), Some(Frame::Telemetry(t)));
     }
 
     #[test]

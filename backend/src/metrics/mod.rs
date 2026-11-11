@@ -26,6 +26,8 @@ pub struct Snapshot {
     pub cpu_clock_mhz: Option<u32>,
     pub ram_total_bytes: u64,
     pub ram_used_bytes: u64,
+    /// macOS available RAM (includes memory the OS can reclaim).
+    pub ram_available_bytes: Option<u64>,
     pub disk_mount: String,
     pub disk_used_pct: f32,
     pub uptime_s: u64,
@@ -85,6 +87,13 @@ impl Snapshot {
                 t.vram_load = ratio_pct(u, tot);
                 t.vram_total_dgb = dgb(tot);
             }
+        }
+        // Apple Silicon shares memory between CPU and GPU, so report available
+        // system RAM in the existing VRAM-capacity slot, flagged for the viewer.
+        #[cfg(target_os = "macos")]
+        if let Some(available) = self.ram_available_bytes {
+            t.ram_available = true;
+            t.vram_total_dgb = dgb(available.min(self.ram_total_bytes));
         }
         if let Some(b) = &self.battery {
             t.battery_present = true;
@@ -273,6 +282,11 @@ impl Collector {
         s.sources.insert("cpu_load".into(), "sysinfo".into());
         s.ram_total_bytes = self.sys.total_memory();
         s.ram_used_bytes = self.sys.used_memory();
+        #[cfg(target_os = "macos")]
+        {
+            s.ram_available_bytes = Some(self.sys.available_memory());
+            s.sources.insert("ram_available".into(), "sysinfo available_memory".into());
+        }
         s.uptime_s = System::uptime();
         let (mount, used) = self.disk_usage();
         s.disk_mount = mount;
@@ -367,6 +381,20 @@ impl Collector {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn available_ram_is_encoded_with_flag() {
+        let snap = Snapshot {
+            ram_total_bytes: 16 * (1_u64 << 30),
+            ram_available_bytes: Some(3 * (1_u64 << 30) + (1_u64 << 29)),
+            ..Snapshot::default()
+        };
+        let t = snap.to_telemetry();
+        assert!(t.ram_available);
+        assert_eq!(t.ram_total_dgb, 160);
+        assert_eq!(t.vram_total_dgb, 35);
+    }
 
     #[test]
     fn cpu_percent_is_relative_to_all_cores() {
