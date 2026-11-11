@@ -20,6 +20,8 @@ PC Health Remote has two parts:
 
 English | [Русский](README.ru.md)
 
+**macOS Apple Silicon (M1/M2/M3/M4):** [Installation and Bluetooth LE / USB guide](docs/MACOS_APPLE_SILICON.md)
+
 ## Features
 
 * **Temps page** - CPU and GPU temperature plus CPU, GPU, RAM and VRAM load bars.
